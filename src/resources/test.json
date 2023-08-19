@@ -1,1 +1,14 @@
-{"jogadores": {"player": {"moedas": 0, "tempo_1": "aaaa", "tempo_2": "bbbb"}}}
+{
+    "jogadores": {
+        "player": {
+            "moedas": 0,
+            "tempo_1": "",
+            "tempo_2": ""
+        },
+        "kamoplaystuff": {
+            "moedas": 0,
+            "tempo_1": "2023-08-15 20:11:41.833205",
+            "tempo_2": "2023-08-15 20:11:41.833205"
+        }
+    }
+}

@@ -19,3 +19,12 @@ Verificar as configuirações em config.ini e depois rodar
 $ python main.py
 ```
 
+## Jogo das Moedinhas
+
+Usando o comando !jogar, todos do chat podem participar do jogo das moedinhas.
+
+- !jogar : Entra no jogo
+- !moeda : Distribui uma quantidade randomica de moedas
+- !cofre : Mostra quantas moedas tem
+- !rank  : Mostra o rank dos top 10 'ricos'
+- !aposta <valor> : Aposta uma quantidade para tentar ganhar mais

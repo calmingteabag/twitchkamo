@@ -8,7 +8,7 @@ load_dotenv()
 game = GameConfig()
 game.is_json_empty()
 game.json_build()
-game.json_add_player()
+# game.json_add_player()
 
 bot = KamoBot()
 bot.run()
