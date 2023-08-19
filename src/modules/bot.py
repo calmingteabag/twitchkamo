@@ -2,7 +2,16 @@ from twitchio.ext import commands
 from random import randint
 from datetime import datetime
 
-from .bot_config import PREFIX, CHANNELS
+from .config import (
+    PREFIX, 
+    CHANNELS, 
+    RESOURCES_PATH, 
+    RESOURCES_FILE,
+    CURRENCY,
+    CURRENCY_COOLDOWN,
+    CURRENCY_RAND_LOW,
+    CURRENCY_RAND_HIGH
+    )
 
 import json
 import os
@@ -12,15 +21,14 @@ class KamoBot(commands.Bot):
     def __init__(self):
         self.resources = os.path.join(
             os.getcwd(), 
-            os.getenv("RESOURCES_PATH"), 
-            os.getenv("RESOURCES")
+            RESOURCES_PATH, 
+            RESOURCES_FILE,
             )
         
         super().__init__(
             token=os.getenv("TOKEN"), 
             prefix=PREFIX, 
             initial_channels=CHANNELS
-            
             )
         
 
@@ -34,8 +42,6 @@ class KamoBot(commands.Bot):
 
         if message.echo:
             return
-
-        print(message)
 
         await self.handle_commands(message)
 
@@ -53,15 +59,6 @@ class KamoBot(commands.Bot):
     async def test(self, ctx):
         
         print(self.resources)
-        # print(os.sep)
-
-        # file = self.directory + "src\modules\jogadores.json"
-        # print(file)
-  
-        # full_path = os.path.join(self.directory, "sardinha")
-        # print(full_path)
-
-
 
     @commands.command(name='jogar')
     async def jogar(self, ctx):
@@ -79,8 +76,8 @@ class KamoBot(commands.Bot):
 
             game_data["jogadores"][new_player] = {
                         "moedas": 0,
-                        "tempo_1": time_stringfied,
-                        "tempo_2": time_stringfied
+                        "cooldown_moeda": time_stringfied,
+                        "cooldown_aposta": time_stringfied
                 }
             
 
@@ -89,7 +86,9 @@ class KamoBot(commands.Bot):
                 
             await ctx.send(f'Um novo jogador foi identificado. Seu nome é {ctx.author.name}.')
         
-        await ctx.send(f'{ctx.author.name}, vc já está na lista de jogadores')
+        else:
+
+            await ctx.send(f'{ctx.author.name}, vc já está na lista de jogadores')
 
         
 
@@ -107,24 +106,24 @@ class KamoBot(commands.Bot):
         else:
 
             time_current = datetime.now()
-            time_json = game_data["jogadores"][ctx.author.name]["tempo_1"]
+            time_json = game_data["jogadores"][ctx.author.name]["cooldown_moeda"]
             time_json_datetime = datetime.strptime(time_json, "%Y-%m-%d %H:%M:%S.%f")
             time_interval = time_current - time_json_datetime
-            time_left = 900 - time_interval.seconds
+            time_left = int(CURRENCY_COOLDOWN) - time_interval.seconds
 
-            if game_data["jogadores"][player]["moedas"] == 0 or time_interval.seconds > 900:
+            if game_data["jogadores"][player]["moedas"] == 0 or time_interval.seconds > int(CURRENCY_COOLDOWN):
 
-                new_moedinhas = randint(0, 100)
+                new_moedinhas = randint(int(CURRENCY_RAND_LOW), int(CURRENCY_RAND_HIGH))
                 time_stringfied = time_current.strftime("%Y-%m-%d %H:%M:%S.%f")
 
                 # updating and saving game data
                 game_data["jogadores"][ctx.author.name]["moedas"] += new_moedinhas
-                game_data["jogadores"][ctx.author.name]["tempo_1"] = time_stringfied
+                game_data["jogadores"][ctx.author.name]["cooldown_moeda"] = time_stringfied
 
                 with open(self.resources, 'w') as file:
                     json.dump(game_data, file)
 
-                await ctx.send(f'O jogador {ctx.author.name} recebeu {new_moedinhas} moedas')
+                await ctx.send(f'O jogador {ctx.author.name} recebeu {new_moedinhas} {CURRENCY}')
             
             else:
                 await ctx.send(f'{ctx.author.name}, vc ja usou seu poder, espere mais {time_left} segundos')
@@ -135,30 +134,63 @@ class KamoBot(commands.Bot):
     async def cofrinho(self, ctx):
         with open(self.resources, 'r+') as file:
             game_data = json.load(file)
+            moedas_qty = game_data["jogadores"][ctx.author.name]["moedas"]
 
-        await ctx.send(f'{ctx.author.name}, vc tem {game_data["jogadores"][ctx.author.name]["moedas"]} moedas.')
+        await ctx.reply(f'{ctx.author.name}, vc tem {moedas_qty} {CURRENCY}.')
 
     @commands.command(name='rank')
     async def rank(self, ctx):
         with open(self.resources, 'r+') as file:
             game_data = json.load(file)
 
-            # preciso ler o json e organizar os jogadores por quantidade de moedas
+            # preciso ler o json e organizar os jogadores por user_qty de moedas
         pass
 
-    @commands.command(name='kamo')
-    async def kamo(self, ctx):
-        pass
+    @commands.command(name='aposta')
+    async def aposta(self, ctx, type=None, user_qty=None):
+        TIPOS = ['loterica', 'bet365', 'farialimer', 'agiota']
+        BET_LIST = {
+            'loterica' : {
+            },
+            'bet365': {},
+            'farialimer':{},
+            'agiota' :{}
+        }
+        # loterica retorna valor pequenoi com maior chance de ganhar
+        # agiota, retorna valor alto, com menor chance de ganhar
+
+        # Checks
+        if type is None or user_qty is None:
+            await ctx.reply(f'{ctx.author.name}, Não consigo realizar a aposta. Use !aposta <type> <user_qty>')
+        elif type not in BET_LIST.keys():
+            await ctx.reply(f'Não entendi que aposta você quer fazer, {ctx.author.name}.')
+
+            return
+        
+        int_qty = int(user_qty)
+        with open(self.resources, 'r+') as file:
+            game_data = json.load(file)
+
+        
+        if int_qty <= 0:
+            await ctx.reply(f'Aposte valores positivos, {ctx.author.name}.')
+        elif int_qty > game_data["jogadores"][ctx.author.name]["moedas"]:
+            await ctx.reply(f'{ctx.author.name}, você não tem moedas suficientes para essa aposta. Escolha um valor menor.')
+
+            return
+
+        # Gambling execution
+        await ctx.reply(f'Aposto miseravi {ctx.author.name}.')
+        
+
+
+    
+        # await ctx.send('test')
 
     @commands.command(name='waifu')
     async def waifus(self, ctx):
         # print(ctx.author.channel.name)
         await ctx.send('Sends a waifu')
 
-    @commands.command(name='randnum')
-    async def randnun(self,ctx):
-
-        num = randint(0, 1000)
-        await ctx.send(str(num))
 
     
